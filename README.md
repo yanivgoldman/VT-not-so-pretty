@@ -16,9 +16,15 @@ Alternatively you can enter this when prompted:
 
 ![Vy-Not-So-Pretty](https://github.com/user-attachments/assets/780fec17-50da-4aef-a91e-d3682be5c573)
 
-After uploading the files for exfiltration to VT, all you have to do is to copy their hashes from the file community section (of the hash that you provided), search them, and download them (require a VT premium API key).
-![image](https://github.com/user-attachments/assets/5eb0067c-72bf-4628-bb7f-d9dfec508649)
-![image](https://github.com/user-attachments/assets/89ff0f8f-73c1-49dd-bc49-eb98732a74d7)
+
+After done uploading the files to VT all you have to do is just run listener as follow:
+
+```
+python VT-Listener.py -f C:\Path\to\save\files\to -k "YOUR_PREMIUM_API_KEY" -c "HASH_TO_CHECK_COMMENTS_ON"
+```
+Or you can also enter this when prompted:
+
+![image](https://github.com/user-attachments/assets/9b8454a3-d486-4ef8-866d-a1b53a21c081)
 
 ## Main Drawbacks:
 
