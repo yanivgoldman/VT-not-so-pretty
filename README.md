@@ -36,4 +36,5 @@ Or you can also enter this when prompted:
 
 This is an ongoing project, and in the future, I am planning to add more tools to it, for other uses as well, like for delivey using LNK files that contain a powershell code that download (or read in memory) file from VT and runs them on the target host.
 
-   
+## Upcoming updates:
+Changing the endpoint to upload file larger then 35 MB.
