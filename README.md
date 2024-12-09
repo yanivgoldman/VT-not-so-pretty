@@ -20,4 +20,14 @@ After uploading the files for exfiltration to VT, all you have to do is to copy 
 ![image](https://github.com/user-attachments/assets/5eb0067c-72bf-4628-bb7f-d9dfec508649)
 ![image](https://github.com/user-attachments/assets/89ff0f8f-73c1-49dd-bc49-eb98732a74d7)
 
+## Main Drawbacks:
+
+1. The file size to transfer are limited to 650 MB per file - Could be solved with proper files splitting and compression.
+
+2. Premium Subscription - In order to download files from VT premium subscription is needed, which could be pretty expensive.
+
+## Disclaimer
+
 This is an ongoing project, and in the future, I am planning to add more tools to it, for other uses as well, like for delivey using LNK files that contain a powershell code that download (or read in memory) file from VT and runs them on the target host.
+
+   
