@@ -45,4 +45,3 @@ This is an ongoing project, and in the future, I am planning to add more tools t
 ## Upcoming updates:
 Changing the endpoint to upload file larger then 35 MB.
 
-Adding a cleanup stage option to delete the comments after downloading the files.
