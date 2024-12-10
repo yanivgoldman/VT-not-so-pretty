@@ -26,6 +26,12 @@ Or you can also enter this when prompted:
 
 ![image](https://github.com/user-attachments/assets/9b8454a3-d486-4ef8-866d-a1b53a21c081)
 
+## Optional cleanup
+If you wish to delete the comments after file download (to cleanup as much as possible), all you have to do is provide the listener the api key used by the first tool as follow:
+```
+python VT-Listener.py -f C:\Path\to\save\files\to -k "YOUR_PREMIUM_API_KEY" -c "HASH_TO_CHECK_COMMENTS_ON -d "THE_API_KEY_USED_4_UPLOAD"
+```
+
 ## Main Drawbacks:
 
 1. The file size to transfer are limited to 650 MB per file - Could be solved with proper files splitting and compression.
