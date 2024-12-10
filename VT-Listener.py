@@ -12,6 +12,7 @@ parser = argparse.ArgumentParser(description="VT not so pretty by YanivG")
 parser.add_argument('-f', '--folder', type=str, help="Path to the folder you want to save files to")
 parser.add_argument('-k', '--api_key', type=str, help="Your Premium VirusTotal API key")
 parser.add_argument('-c', '--comments_file_hash', type=str, help="Hash to check comment on in VirusTotal")
+parser.add_argument('-d', '--delete_api_key', type=str, help="API key for deleting comments after download - this should be the one used for file upload", required=False)
 
 args = parser.parse_args()
 
@@ -19,7 +20,7 @@ args = parser.parse_args()
 def validate_folder_path(folder_path):
     return os.path.isdir(folder_path)
 
-# Get the folder path either from arguments or user input
+# Prompt the user if folder from arguments isn't provided
 folder_path = args.folder if args.folder else input("Please enter the folder path you want to save files to: ")
 
 # Validate folder path
@@ -28,18 +29,25 @@ while not validate_folder_path(folder_path):
     folder_path = input("Please enter the folder path you want to save files to: ")
 
 # Prompt the user if API key from arguments isn't provided
-api_key = args.api_key if args.api_key else input("Enter your Premium VirusTotal API key: ")
+api_key = args.api_key if args.api_key else input("Please enter your Premium VirusTotal API key: ")
 
 # Prompt the user if Hash from user arguments isn't provided
-file_hash = args.comments_file_hash if args.comments_file_hash else input("Enter the file hash to check comments on in VirusTotal: ")
+file_hash = args.comments_file_hash if args.comments_file_hash else input("Please enter the file hash to check comments on in VirusTotal: ")
 
+# Get delete API key from arguments
+delete_api_key = args.delete_api_key if args.delete_api_key else None
 
 url = f'https://www.virustotal.com/api/v3/files/{file_hash}/comments'
 
-# Headers 
+# Headers for main API requests
 headers = {
     'x-apikey': api_key  
 }
+
+# Headers for DELETE requests
+delete_headers = {
+    'x-apikey': delete_api_key
+} if delete_api_key else None
 
 # Function to download file based on hash from comments
 def download_file(file_hash):
@@ -52,7 +60,7 @@ def download_file(file_hash):
         
         # Check if request was successful
         if response.status_code == 200:
-            file_name = os.path.join(folder_path, f"{file_hash}.vt")  # Save file using the hash as the file name and the extention .vt
+            file_name = os.path.join(folder_path, f"{file_hash}.vt")  # Save file using the hash as the file name and the extension .vt
             with open(file_name, 'wb') as file:
                 for chunk in response.iter_content(1024):
                     if chunk:
@@ -62,6 +70,25 @@ def download_file(file_hash):
             print(f"Failed to download file {file_hash}: {response.status_code}")
     except Exception as e:
         print(f"Error downloading file {file_hash}: {e}")
+
+# Function to delete a comment based on ID
+def delete_comment(comment_id):
+    if delete_headers:
+        try:
+            # URL for deleting the comment
+            delete_url = f"https://www.virustotal.com/api/v3/comments/{comment_id}"
+            
+            # Request to delete the comment
+            response = requests.delete(delete_url, headers=delete_headers)
+            
+            if response.status_code == 200:
+                print(f"Comment with ID {comment_id} deleted successfully.")
+            else:
+                print(f"Failed to delete comment with ID {comment_id}: {response.status_code}")
+        except Exception as e:
+            print(f"Error deleting comment {comment_id}: {e}")
+    else:
+        print("No API key provided for comment deletion. Skipping comment deletion.")
 
 # Function to get and print the comments, and then download files based on hashes
 def get_comments():
@@ -83,19 +110,23 @@ def get_comments():
                     comment_text = comment["attributes"].get('text', 'No comment available')
                     print(f"Comment: {comment_text}")
                     
-                    # Check if the comment contains a file hash (assuming it's a hash in the comment text)
-                    # Assuming the hashes are alphanumeric strings of length 64 (common for VT file hashes)
+                    # Check if the comment contains a file hash
+                    # Assuming the hashes are alphanumeric strings of length 64
                     possible_hash = comment_text.strip()
                     if len(possible_hash) == 64:  # Check if it's a valid SHA256 hash length
                         print(f"Found hash in comment: {possible_hash}")
                         download_file(possible_hash)
+                        
+                        # Delete the comment after processing it (if delete_api_key is provided)
+                        if delete_headers:
+                            comment_id = comment["id"]
+                            delete_comment(comment_id)
             else:
                 print("No comments available.")
         else:
             print(f"Failed to retrieve data: {response.status_code}")
     except Exception as e:
         print(f"Error: {e}")
-
 
 # Loop to call the function every 2 minutes
 while True:
